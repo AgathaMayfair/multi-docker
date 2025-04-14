@@ -10,15 +10,31 @@ jobs:
     steps: 
       - uses: actions/checkout@v3
       - run: docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-      - run: docker build -t agathamayfair/react-test -f ./client/Dockerfile.dev ./client
-      - run: docker run -e CI=true agathamayfair/react-test npm test
+      - run: docker build -t agathamayfair/react-test-up -f ./client/Dockerfile.dev ./client
+      - run: docker run -e CI=true agathamayfair/react-test-up npm test
 
-      - run: docker build -t agathamayfair/multi-client ./client
-      - run: docker build -t agathamayfair/multi-nginx ./nginx
-      - run: docker build -t agathamayfair/multi-server ./server
-      - run: docker build -t agathamayfair/multi-worker ./worker
+      - run: docker build -t agathamayfair/multi-client-up ./client
+      - run: docker build -t agathamayfair/multi-nginx-up ./nginx
+      - run: docker build -t agathamayfair/multi-server-up ./server
+      - run: docker build -t agathamayfair/multi-worker-up ./worker
 
-      - run: docker push agathamayfair/multi-client
-      - run: docker push agathamayfair/multi-nginx
-      - run: docker push agathamayfair/multi-server
-      - run: docker push agathamayfair/multi-worker
+      - run: docker push agathamayfair/multi-client-up
+      - run: docker push agathamayfair/multi-nginx-up
+      - run: docker push agathamayfair/multi-server-up
+      - run: docker push agathamayfair/multi-worker-up
+
+      - name: Generate deployment package
+        run: zip -r deploy.zip . -x '*.git*'
+
+      - name: Deploy to EB
+        uses: einaregilsson/beanstalk-deploy@v18
+        with:
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY }}
+          aws_secret_key: ${{ secrets.AWS_SECRET_KEY }}
+          application_name: multi-docker
+          environment_name: Multi-docker-env
+          existing_bucket_name: elasticbeanstalk-us-east-1-339712906508
+          region: us-east-1
+          version_label: ${{ github.sha }}
+          deployment_package: deploy.zip
+          use_existing_version_if_available: true
